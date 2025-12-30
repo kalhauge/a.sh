@@ -1,0 +1,55 @@
+[[languages]]
+name = "JSON"
+
+[[languages.formatters]]
+command = "jq"
+args = ["."]
+
+
+[[languages]]
+name = "Shell"
+
+[[languages.formatters]]
+command = "shfmt"
+args = ["-s", "-i", "2", "-"]
+
+
+[[languages]]
+name = "Markdown"
+
+[[languages.formatters]]
+command = "mdformat"
+args = []
+
+[[languages]]
+name = "Nix"
+
+[[languages.formatters]]
+command = "nixfmt"
+args = []
+
+[[languages]]
+name = "YAML"
+
+[[languages.formatters]]
+command = "prettier"
+args = ['--parser', 'yaml']
+
+[[languages]]
+name = "Git Attributes"
+formatters = [{}]
+
+[[languages]]
+name = "Ignore List"
+formatters = [{}]
+
+[[languages]]
+name = "TOML"
+
+[[languages.formatters]]
+command = "taplo"
+args = ['fmt', '-']
+
+[[languages]]
+name = 'TSV'
+formatters = [{}]
