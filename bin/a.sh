@@ -336,7 +336,7 @@ function cmd-fmt-io() {
   shift $((OPTIND - 1))
   OPTIND=0
 
-  if [ ${#opts[@]} -eq 0]; then
+  if [ ${#opts[@]} -eq 0 ]; then
     log "Error: expected either -f file or -l language"
     usage
   fi
@@ -405,15 +405,10 @@ function cmd-fmt() {
     fi
 
     local formatter=($formatter)
-
-    if [ "$mode" == "io" ]; then
-      exec "${formatter[@]}" "$@"
-    fi
-
     local fmt_file=$(mktemp)
     debug "writing to ${fmt_file}"
     local result=0
-    "${formatter[@]}" "$@" <"$file" >"${fmt_file}" || result=$?
+    "${formatter[@]}"  <"$file" >"${fmt_file}" || result=$?
 
     if ((result)); then
       log "Error: got non-zero exit-code: $result"
@@ -427,6 +422,9 @@ function cmd-fmt() {
     fi
 
     if [ "$mode" == "check" ]; then
+      log "Error: found changes in $file"
+      log "Accept by running:"
+      printf '%q ' mv "${fmt_file}" "${file}"
       return 1
     fi
 
@@ -472,6 +470,10 @@ else
   debug "Found project root: $PROJECT_ROOT"
 fi
 
+if [ -z ${ASH_DIR:-} ]; then
+  export ASH_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && cd .. && pwd -P)"
+fi
+
 function config-find() { 
   local configs=()
   local missing=()
@@ -482,9 +484,6 @@ function config-find() {
       missing+=("$ASH_SINGLETON_CONFIG")
     fi
   else
-    if [ -z ${ASH_DIR:-} ]; then
-      export ASH_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && cd .. && pwd -P)"
-    fi
 
     local CONFIGS_DIRS=("${PROJECT_ROOT:-.}")
 

@@ -5,7 +5,6 @@ name = "JSON"
 command = "jq"
 args = ["."]
 
-
 [[languages]]
 name = "Shell"
 
@@ -37,6 +36,32 @@ name = "YAML"
 command = "prettier"
 args = ['--parser', 'yaml']
 
+
+
+[[languages]]
+name = "TOML"
+
+[[languages.formatters]]
+command = "tomll"
+
+[[languages]]
+name = 'TSV'
+formatters = [{}]
+
+[[languages]]
+name = 'Python'
+
+[[languages.formatters]]
+command = "uvx"
+args = ['ruff', 'format', "-"]
+
+[[languages]]
+name = "Lua"
+
+[[languages.formatters]]
+command = "stylua"
+args = [ "-"]
+
 [[languages]]
 name = "Git Attributes"
 formatters = [{}]
@@ -46,12 +71,5 @@ name = "Ignore List"
 formatters = [{}]
 
 [[languages]]
-name = "TOML"
-
-[[languages.formatters]]
-command = "taplo"
-args = ['fmt', '-']
-
-[[languages]]
-name = 'TSV'
+name = "Public Key"
 formatters = [{}]
