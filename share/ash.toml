@@ -19,7 +19,7 @@ name = "Markdown"
 
 [[languages.formatters]]
 command = "mdformat"
-args = []
+args = ["-"]
 
 [[languages]]
 name = "Nix"
