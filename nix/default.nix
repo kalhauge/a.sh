@@ -25,11 +25,10 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     cp -r share/linguist.tsv "$out/share/"
     toml2json -p share/ash.toml > "$out/share/ash.json"
 
-    for file in bin/*.sh; do
-      exec="$out/$file"
-      install --mode +x "$file" "$exec"
-      makeWrapper $exec ''${exec%.sh} \
-         --prefix PATH : ${lib.makeBinPath finalAttrs.dependencies}
-    done
+    install --mode +x "bin/a.sh" "$out/bin/a.sh.unwrapped"
+    makeWrapper "$out/bin/a.sh.unwrapped" "$out/bin/a.sh" \
+       --prefix PATH : ${lib.makeBinPath finalAttrs.dependencies}
   '';
+
+  meta.mainProgram = "a.sh";
 })
