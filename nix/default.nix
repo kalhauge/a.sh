@@ -4,6 +4,7 @@
   makeWrapper,
   toml2json,
   jq,
+  enry,
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
   name = "ash";
@@ -16,6 +17,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   dependencies = [
     toml2json
     jq
+    enry
   ];
 
   installPhase = ''
