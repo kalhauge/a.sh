@@ -12,7 +12,7 @@ function log() { 1>&2 echo "$@"; }
 REQUIRED_PROGRAMS=(
   git=https://git-scm.com/
   jq=https://jqlang.org/
-  toml2json=https://github.com/woodruffw/toml2json
+  go-toml=https://github.com/pelletier/go-toml
   enry=https://pkg.go.dev/github.com/go-enry/go-enry/
 )
 
@@ -184,18 +184,17 @@ function cmd-config() {
     debug "looking up in $cfg"
 
     local exit_code=0
-    if [ ${cfg##*.} == "toml" ]; then
-      toml2json "$cfg"
+    if [ "${cfg##*.}" == "toml" ]; then
+      tomljson "$cfg"
     else
       cat "$cfg"
     fi | jq -e -s "${jq_args[@]}" --arg lang "${language}" "
-          first(
             .[] 
             | .languages // [] 
             | .[] 
             | select(.name == \$lang) 
             | $QUERY
-          )" || exit_code=$?
+          " || exit_code=$?
     if ((early_return)) && [ $exit_code -ne 4 ]; then
       debug "found solution, breaking"
       break
@@ -251,18 +250,31 @@ function cmd-fmt-find() {
   if [ ${#formatters[@]} -eq 0 ]; then
     log "Error: no formatter for $language"
     log
-    log "Ignore a formatter to the $PROJECT_ROOT/ash.toml file:"
+    log "To fix this modify the $PROJECT_ROOT/ash.toml file, where you can either"
+    log "ignore the language:"
     log
     log "  [[languages]]"
     log "  name='$language'"
-    log
-    log "  # to ignore"
     log "  formatters = [ {} ] "
     log
-    log "  # to add"
-    log "  [[language.formatters]]"
-    log "  command='path'"
-    log "  args=[...]"
+
+    if ((safe_mode)); then 
+      log "consider adding one of the default formatters, "
+      log
+      safe_mode=0
+      ASH_CONFIGS=($(config-find)) 
+      cmd-config '.formatters // [] | .[]' "$language" | 
+          jq -s --arg lang "$language" '{ languages: [{ name: $lang, formatters: .}]}' | 
+          jsontoml | 
+          sed 's/^/  /' 1>&2
+      log
+    fi
+
+    log "Or add your own"
+    log 
+    log "  [[languages]]"
+    log "  name='$language'"
+    log "  formatters = [{ command = '/path/to/exec', args = [...] }]"
     log
     if [ -n "$file" ]; then
       log "Or ignore in .gitattributes by adding a line:"
@@ -460,53 +472,58 @@ else
   debug "Found project root: $PROJECT_ROOT"
 fi
 
-ASH_CONFIGS=()
-missing=()
-if [ -n "${ASH_SINGLETON_CONFIG:-}" ]; then
-  if [ -e "$ASH_SINGLETON_CONFIG" ]; then
-    ASH_CONFIGS=("$ASH_SINGLETON_CONFIG")
+function config-find() { 
+  local configs=()
+  local missing=()
+  if [ -n "${ASH_SINGLETON_CONFIG:-}" ]; then
+    if [ -e "$ASH_SINGLETON_CONFIG" ]; then
+      configs=("$ASH_SINGLETON_CONFIG")
+    else
+      missing+=("$ASH_SINGLETON_CONFIG")
+    fi
   else
-    missing+=("$ASH_SINGLETON_CONFIG")
-  fi
-else
-  if [ -z ${ASH_DIR:-} ]; then
-    export ASH_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && cd .. && pwd -P)"
-  fi
+    if [ -z ${ASH_DIR:-} ]; then
+      export ASH_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && cd .. && pwd -P)"
+    fi
 
-  CONFIGS_DIRS=("${PROJECT_ROOT:-.}")
+    local CONFIGS_DIRS=("${PROJECT_ROOT:-.}")
 
-  if ! ((safe_mode)) || [ -z "${PROJECT_ROOT:-}" ]; then
-    CONFIGS_DIRS+=(
-      "${XDG_CONFIG_DIRS:-$HOME/.config}/ash"
-      "$HOME/.ash"
-      "$ASH_DIR/share"
-    )
-  fi
+    if ! ((safe_mode)) || [ -z "${PROJECT_ROOT:-}" ]; then
+      CONFIGS_DIRS+=(
+        "${XDG_CONFIG_DIRS:-$HOME/.config}/ash"
+        "$HOME/.ash"
+        "$ASH_DIR/share"
+      )
+    fi
 
-  for dir in "${CONFIGS_DIRS[@]}"; do
-    for file in "ash.json" "ash.toml"; do
-      if [ -e "$dir/$file" ]; then
-        ASH_CONFIGS+=("$dir/$file")
-      else
-        missing+=("$dir/$file")
-      fi
+    for dir in "${CONFIGS_DIRS[@]}"; do
+      for file in "ash.json" "ash.toml"; do
+        if [ -e "$dir/$file" ]; then
+          configs+=("$dir/$file")
+        else
+          missing+=("$dir/$file")
+        fi
+      done
     done
-  done
-fi
+  fi
 
-if [ ${#ASH_CONFIGS[@]} -eq 0 ]; then
-  log "Error: found no configurations, looked in:"
-  for missing in "${missing[@]}"; do
-    log " - ${missing}"
-  done
-  exit 1
-else
-  debug "Found configs:"
-  for config in "${ASH_CONFIGS[@]}"; do
-    debug " - $config"
-  done
-fi
+  if [ ${#configs[@]} -eq 0 ]; then
+    log "Error: found no configurations, looked in:"
+    for missing in "${missing[@]}"; do
+      log " - ${missing}"
+    done
+    exit 1
+  else
+    debug "Found configs:"
+    for config in "${configs[@]}"; do
+      debug " - $config"
+    done
+  fi
 
+  printf '%q ' "${configs[@]}"
+}
+
+ASH_CONFIGS=($(config-find))
 CMD="${1:-}"
 
 if shift 1; then

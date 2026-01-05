@@ -2,7 +2,9 @@
   stdenvNoCC,
   lib,
   makeWrapper,
-  toml2json,
+
+  # dependencies
+  go-toml,
   jq,
   enry,
 }:
@@ -12,10 +14,10 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
   phases = "installPhase";
 
-  buildInputs = [makeWrapper toml2json];
+  buildInputs = [makeWrapper go-toml];
 
   dependencies = [
-    toml2json
+    go-toml
     jq
     enry
   ];
@@ -25,7 +27,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     mkdir -p "$out/bin" "$out/share"
 
     cp -r share/linguist.tsv "$out/share/"
-    toml2json -p share/ash.toml > "$out/share/ash.json"
+    tomljson share/ash.toml > "$out/share/ash.json"
 
     install --mode +x "bin/a.sh" "$out/bin/a.sh.unwrapped"
     makeWrapper "$out/bin/a.sh.unwrapped" "$out/bin/a.sh" \
