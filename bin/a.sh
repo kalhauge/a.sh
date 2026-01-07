@@ -406,7 +406,7 @@ function cmd-fmt() {
 
     if ((result)); then
       if [ $result == 2 ]; then
-        1>&2 printf '%10s\n' "unchanged"
+        1>&2 printf '%10s\n' "skipped"
         continue
       fi
       return $result
