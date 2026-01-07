@@ -1,0 +1,7 @@
+{
+  command = "ruff";
+  args = [
+    "format"
+    "-"
+  ];
+}

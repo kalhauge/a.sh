@@ -1,0 +1,4 @@
+{
+  command = "jq";
+  args = [ "." ];
+}

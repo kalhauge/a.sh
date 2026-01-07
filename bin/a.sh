@@ -128,14 +128,20 @@ doc_config="get the configuration of a language (or file)"
 function cmd-config() {
 
   function usage() {
-    log "Usage: $0 config [-efhlcr] QUERY ARG"
+    log "Usage: $0 config [-ehcr] [target] QUERY"
     log
-    log " Outputs jq on QUERY in the config of ARG"
+    log " Outputs QUERY on the config files"
     log
-    log "  -e            Return early"
-    log "  -f            Assume argument is a file"
+    log "  -e            Return after first hit"
     log "  -h            Display this help"
-    log "  -l            Assume argument is a language (default)"
+    log
+    log " where target is one of: "
+    log
+    log "  -f file       Run query on file"
+    log "  -l language   Run query on language"
+    log "  -F formatter  Run query on formatter"
+    log "  -a            Run query on all of the config"
+    log
     log
     log " Options passed on to jq, "
     log
@@ -144,15 +150,27 @@ function cmd-config() {
     exit 1
   }
 
-  local inputs="languages"
+  local target="all"
+  local arg=""
   local jq_args=()
   local only_language=0
   local early_return=0
-  while getopts "efhlcr" o; do
+  while getopts "ehacrl:f:F:" o; do
     case "$o" in
     h) usage ;;
-    f) inputs="files" ;;
-    l) inputs="languages" ;;
+    f)
+      target="language"
+      arg=$(cmd-language "${OPTARG}")
+      ;;
+    l)
+      target="language"
+      arg="${OPTARG}"
+      ;;
+    F)
+      target="formatter"
+      arg="${OPTARG}"
+      ;;
+    a) target="all" ;;
     e) early_return=1 ;;
     r) jq_args+=("--raw-output0") ;;
     c) jq_args+=("--compact-output") ;;
@@ -164,21 +182,25 @@ function cmd-config() {
   OPTIND=0
 
   local QUERY="${1:-}"
-  local ARG="${2:-}"
 
-  if ! shift 2; then
-    log "Error: expected two arguments QUERY and ARG"
+  if ! shift 1; then
+    log "Error: expected an argument QUERY"
     log
     usage
   fi
 
-  local language
-
-  if [ $inputs == "files" ]; then
-    language=$(cmd-language "$ARG")
-  else
-    language="$ARG"
-  fi
+  case "${target}" in
+  language)
+    jq_args+=(--arg lang "${arg}")
+    QUERY=".languages[\$lang] | $QUERY"
+    ;;
+  formatter)
+    jq_args+=(--arg formatter "${arg}")
+    QUERY=".formatters[\$formatter] | $QUERY"
+    ;;
+  all) ;;
+  *) log "unexpected" ;;
+  esac
 
   for cfg in "${ASH_CONFIGS[@]}"; do
     debug "looking up in $cfg"
@@ -188,13 +210,7 @@ function cmd-config() {
       tomljson "$cfg"
     else
       cat "$cfg"
-    fi | jq -e -s "${jq_args[@]}" --arg lang "${language}" "
-            .[] 
-            | .languages // [] 
-            | .[] 
-            | select(.name == \$lang) 
-            | $QUERY
-          " || exit_code=$?
+    fi | jq -e "${jq_args[@]}" "$QUERY" || exit_code=$?
     if ((early_return)) && [ $exit_code -ne 4 ]; then
       debug "found solution, breaking"
       break
@@ -205,10 +221,11 @@ function cmd-config() {
 doc_fmt_find="get formatter for a language"
 function cmd-fmt-find() {
   function usage() {
-    log "Usage: $0 fmt-find [-hc] [-f file | -l language] "
+    log "Usage: $0 fmt-find [-hcx] [-f file | -l language] "
     log
     log " -l language  the name of the language to find a formatter for."
     log " -f file      the name of the file to find a formatter for."
+    log " -x           require a formatter to exist"
     log " -c           check the version with '--version'."
     log " -h           display this help message."
     exit 1
@@ -217,11 +234,13 @@ function cmd-fmt-find() {
   local file=""
   local language=""
   local check=0
-  while getopts "hcf:l:" opt; do
+  local strict=0
+  while getopts "xhcf:l:" opt; do
     case "$opt" in
     h) usage ;;
     f) file="$OPTARG" ;;
     l) language="$OPTARG" ;;
+    x) strict=1 ;;
     c) check=1 ;;
     \?)
       echo "Invalid option: -$OPTARG"
@@ -241,41 +260,15 @@ function cmd-fmt-find() {
     language=$(cmd-language "$file")
   fi
 
-  mapfile -d '' formatters < <(cmd-config -cer '
-    .formatters // [] 
-    | .[] 
-    | [.command] + (.args // []) 
-    | @sh' "$language")
+  mapfile -d '' formatters < <(cmd-config -cer -l "$language" '.formatters[]?')
 
   if [ ${#formatters[@]} -eq 0 ]; then
-    log "Error: no formatter for $language"
-    log
-    log "To fix this modify the $PROJECT_ROOT/ash.toml file, where you can either"
-    log "ignore the language:"
-    log
-    log "  [[languages]]"
-    log "  name='$language'"
-    log "  formatters = [ {} ] "
-    log
-
-    if ((safe_mode)); then 
-      log "consider adding one of the default formatters, "
-      log
-      safe_mode=0
-      ASH_CONFIGS=($(config-find)) 
-      cmd-config '.formatters // [] | .[]' "$language" | 
-          jq -s --arg lang "$language" '{ languages: [{ name: $lang, formatters: .}]}' | 
-          jsontoml | 
-          sed 's/^/  /' 1>&2
-      log
+    if ! ((strict)); then
+      debug "found no debugger for ${language}"
+      return 2
     fi
+    log "Error: no formatter for $language"
 
-    log "Or add your own"
-    log 
-    log "  [[languages]]"
-    log "  name='$language'"
-    log "  formatters = [{ command = '/path/to/exec', args = [...] }]"
-    log
     if [ -n "$file" ]; then
       log "Or ignore in .gitattributes by adding a line:"
       log
@@ -285,29 +278,33 @@ function cmd-fmt-find() {
     return 1
   fi
 
-  eval "formatter=(${formatters[0]})"
+  for fname in "${formatters[@]}"; do
+    mapfile -d '' formatter < <(cmd-config -rcF "$fname" '
+      (if .path then .path + "/" + .command else .command end), 
+      .args[]?')
 
-  if [ "${formatter[0]}" == "null" ]; then
-    debug "Found null formatter for $language, ignoring it"
-    return 2
-  fi
+    if [ "${formatter[0]}" == "null" ]; then
+      debug "Found null formatter for $language, ignoring it"
+      return 2
+    fi
 
-  local EXE=$(which "${formatter[0]}" || true)
-  if [ -z "$EXE" ]; then
-    log "Error: formatter not on path: ${formatter[0]}"
-    return 1
-  fi
+    local EXE=$(which "${formatter[0]}" || true)
+    if [ -z "${EXE:-}" ]; then
+      log "Error: formatter not on path: ${formatter[0]}"
+      return 1
+    fi
 
-  formatter[0]="${EXE}"
+    formatter[0]="${EXE}"
 
-  debug "Found formatter:"
-  debug "  ${formatter[@]}"
+    debug "Found formatter:"
+    debug "  ${formatter[@]}"
 
-  if ((check)); then
-    debug "with version: $(${formatter[0]} --version)"
-  fi
+    if ((check)); then
+      debug "with version: $(${formatter[0]} --version)"
+    fi
 
-  printf '%q ' "${formatter[@]}"
+    printf '%q ' "${formatter[@]}"
+  done
 }
 
 doc_fmt_io="run the formatter in IO mode"
@@ -341,7 +338,7 @@ function cmd-fmt-io() {
     usage
   fi
 
-  $(cmd-fmt-find "${opts[@]}")
+  $(cmd-fmt-find -x "${opts[@]}")
 
 }
 
@@ -358,19 +355,29 @@ doc_fmt="run the formatter on a list of file"
 function cmd-fmt() {
 
   function usage() {
-    log "Usage: $0 fmt [-hcw] FILE..."
+    log "Usage: $0 fmt [-hcwD] FILE..."
+    log
+    log "  format FILEs, if no file is given, the files are read from"
+    log "  stdin."
     log
     log "  -w      override the file"
     log "  -c      check the file for formatting (default)"
+    log "  -D      check and file for formatting and print diff"
+    log
     exit 1
   }
 
   local mode=check
+  local print_diff=0
   while getopts "hcw" opt; do
     case "$opt" in
     h) usage ;;
     c) mode=check ;;
     w) mode=write ;;
+    D)
+      mode=check
+      print_diff=1
+      ;;
     \?)
       echo "Invalid option: -$OPTARG"
       usage
@@ -386,8 +393,9 @@ function cmd-fmt() {
     mapfile -t ARGS
   fi
 
+  local updates=()
   for file in "${ARGS[@]}"; do
-    debug "handle file: $file"
+    1>&2 printf '%-40s' "$file"
 
     local language=$(cmd-language "$file")
 
@@ -398,7 +406,7 @@ function cmd-fmt() {
 
     if ((result)); then
       if [ $result == 2 ]; then
-        log "Info: skipping $language"
+        1>&2 printf '%10s\n' "unchanged"
         continue
       fi
       return $result
@@ -408,36 +416,45 @@ function cmd-fmt() {
     local fmt_file=$(mktemp)
     debug "writing to ${fmt_file}"
     local result=0
-    "${formatter[@]}"  <"$file" >"${fmt_file}" || result=$?
+    "${formatter[@]}" <"$file" >"${fmt_file}" || result=$?
 
     if ((result)); then
       log "Error: got non-zero exit-code: $result"
+      1>&2 printf '%10s\n' "error($result)"
       return "$result"
     fi
 
-    if 1>&2 diff --color=always ${file} ${fmt_file}; then
-      debug "no changes found"
+    if 1>/dev/null diff -q ${file} ${fmt_file}; then
+      1>&2 printf '%10s\n' "unchanged"
       rm -rf "${fmt_file}"
       continue
     fi
 
-    if [ "$mode" == "check" ]; then
-      log "Error: found changes in $file"
-      log "Accept by running:"
-      printf '%q ' mv "${fmt_file}" "${file}"
-      return 1
-    fi
-
-    if [ "$mode" == "write" ]; then
-      debug "moving ${fmt_file} to ${file}"
-      mv "${fmt_file}" "${file}"
-      continue
-    fi
-
-    log "Error: unknown mode=$mode"
-    return 0
+    1>&2 printf '%10s\n' "changed"
+    changes+=("$(printf '%q ' "${fmt_file}" "${file}")")
 
   done
+
+  log "found ${#changes[@]} changes"
+  if ((print_diff)); then
+    for c in "${changes[@]}"; do
+      diff --color=always $c || true
+    done
+  fi
+  
+  case "$mode" in
+  check)
+    log "accept using:"
+    for c in "${changes[@]}"; do
+      log "mv $c"
+    done
+    return 1
+    ;;
+  write)
+    for c in "${changes[@]}"; do
+      mv $c
+    done
+  esac
 }
 
 function debug() { return 0; }
@@ -474,7 +491,7 @@ if [ -z ${ASH_DIR:-} ]; then
   export ASH_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && cd .. && pwd -P)"
 fi
 
-function config-find() { 
+function config-find() {
   local configs=()
   local missing=()
   if [ -n "${ASH_SINGLETON_CONFIG:-}" ]; then

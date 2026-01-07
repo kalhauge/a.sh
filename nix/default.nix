@@ -14,7 +14,10 @@ stdenvNoCC.mkDerivation (finalAttrs: {
 
   phases = "installPhase";
 
-  buildInputs = [makeWrapper go-toml];
+  buildInputs = [
+    makeWrapper
+    go-toml
+  ];
 
   dependencies = [
     go-toml

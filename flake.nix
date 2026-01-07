@@ -33,60 +33,85 @@
         );
     in
     {
+      lib = rec {
+        mkSimpleModule =
+          mod:
+          if builtins.typeOf mod == "set" then
+            { ... }:
+            {
+              config = mod;
+            }
+          else if builtins.typeOf mod == "file" then
+            mkSimpleModule (import mod)
+          else
+            mod;
+        mkAshModule =
+          extra-config:
+          (inputs.nixpkgs.lib.evalModules {
+            modules = [
+              (mkSimpleModule extra-config)
+              ./nix/module.nix
+            ];
+          });
+        mkAshConfig =
+          pkgs: extra-config:
+          (mkAshModule (
+            {
+              _module.args = { inherit pkgs; };
+            }
+            // extra-config
+          )).config.output-json;
+
+        mkFormatter =
+          {
+            system,
+            pkgs ? inputs.nixpkgs.legacyPackages.${system},
+            lib ? inputs.nixpkgs.lib,
+            configPath ? "packages.${system}.ash-config",
+            formatAll ? false,
+          }:
+          pkgs.writeShellScriptBin "format.sh" (
+            ''
+              nix build .#${configPath} --out-link ash.json
+            ''
+            + lib.optionalString formatAll ''
+              git ls-files | ${lib.getExe self.packages.${system}.default} -d fmt -w
+            ''
+          );
+      };
+
       packages = forEachSystem {
         do =
           { pkgs, ... }:
           {
             default = pkgs.callPackage ./nix { };
-            ash_json = pkgs.writeText "ash.json" (
-              builtins.toJSON {
-                languages = [
-                  {
-                    name = "Markdown";
-                    formatters = [
-                      {
-                        command = pkgs.lib.getExe pkgs.mdformat;
-                        args = [ "-" ];
-                      }
-                    ];
-                  }
-                  {
-                    name = "TOML";
-                    formatters = [
-                      {
-                        command = pkgs.lib.getExe pkgs.taplo;
-                        args = [
-                          "fmt"
-                          "-"
-                        ];
-                      }
-                    ];
-                  }
-                ];
-              }
-            );
+            ash-config = self.lib.mkAshConfig pkgs {
+              emitPaths = true;
+              usedLanguages = [
+                "Git Attributes"
+                "Nix"
+                "Shell"
+                "Ignore List"
+                "JSON"
+                "Markdown"
+              ];
+            };
           };
       };
-
-      devShells = forEachSystem {
+      formatter = forEachSystem {
         do =
-          {
-            pkgs,
-            system,
-            self',
-            ...
-          }:
-          {
-            default = pkgs.mkShellNoCC { };
+          { system, ... }:
+          self.lib.mkFormatter {
+            inherit system;
+            formatAll = true;
           };
       };
 
       checks = forEachSystem {
         do =
           {
-            system,
-            pkgs,
             self',
+            pkgs,
             ...
           }:
           {
