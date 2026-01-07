@@ -24,5 +24,8 @@
     "Shell" = {
       formatters = [ "shfmt" ];
     };
+    "Lua" = {
+      formatters = [ "stylua" ];
+    };
   };
 }
