@@ -406,7 +406,7 @@ function cmd-fmt() {
 
     if ((result)); then
       if [ $result == 2 ]; then
-        1>&2 printf '%10s\n' "skipped"
+        1>&2 printf '%20s\n' "skipped [$language]"
         continue
       fi
       return $result
@@ -420,17 +420,17 @@ function cmd-fmt() {
 
     if ((result)); then
       log "Error: got non-zero exit-code: $result"
-      1>&2 printf '%10s\n' "error($result)"
+      1>&2 printf '%20s\n' "error ($result)"
       return "$result"
     fi
 
     if 1>/dev/null diff -q ${file} ${fmt_file}; then
-      1>&2 printf '%10s\n' "unchanged"
+      1>&2 printf '%20s\n' "unchanged"
       rm -rf "${fmt_file}"
       continue
     fi
 
-    1>&2 printf '%10s\n' "changed"
+    1>&2 printf '%20s\n' "changed"
     changes+=("$(printf '%q ' "${fmt_file}" "${file}")")
 
   done
