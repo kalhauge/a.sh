@@ -22,6 +22,10 @@ nix run github:kalhauge/a.sh -- ARGS
 
 ## Configuration
 
+## TODO 
+
+Follow https://github.com/numtide/prj-spec/blob/main/PRJ_SPEC.md
+
 ## Overrides
 
 See https://github.com/github-linguist/linguist/blob/main/docs/overrides.md#using-gitattributes

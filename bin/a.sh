@@ -483,14 +483,16 @@ done
 shift $((OPTIND - 1))
 OPTIND=0
 
-if [ -z "${PROJECT_ROOT:-}"]; then
-  PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || true)
-fi
+find_prj_config() { 
+  git rev-parse --show-toplevel 2>/dev/null || true
+}
 
-if [ -z "$PROJECT_ROOT" ]; then
+: "${PRJ_ROOT:=$(find_prj_root)}"
+
+if [ -z "$PRJ_ROOT" ]; then
   debug "Could not find git root directory"
 else
-  debug "Found project root: $PROJECT_ROOT"
+  debug "Found project root: $PRJ_ROOT"
 fi
 
 if [ -z ${ASH_DIR:-} ]; then
@@ -508,9 +510,9 @@ function config-find() {
     fi
   else
 
-    local CONFIGS_DIRS=("${PROJECT_ROOT:-.}")
+    local CONFIGS_DIRS=("${PRJ_ROOT:-.}")
 
-    if ! ((safe_mode)) || [ -z "${PROJECT_ROOT:-}" ]; then
+    if ! ((safe_mode)) || [ -z "${PRJ_ROOT:-}" ]; then
       CONFIGS_DIRS+=(
         "${XDG_CONFIG_DIRS:-$HOME/.config}/ash"
         "$HOME/.ash"
