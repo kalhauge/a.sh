@@ -53,6 +53,7 @@
               ./nix/module.nix
             ];
           });
+
         mkAshConfig =
           pkgs: extra-config:
           (mkAshModule (
@@ -61,6 +62,15 @@
             }
             // extra-config
           )).config.output-json;
+
+        mkAshShell =
+          pkgs: extra-config:
+          (mkAshModule (
+            {
+              _module.args = { inherit pkgs; };
+            }
+            // extra-config
+          )).config.output-shell;
 
         mkFormatter =
           {
@@ -75,16 +85,52 @@
               nix build .#${configPath} --out-link ash.json
             ''
             + lib.optionalString formatAll ''
-              git ls-files | ${lib.getExe self.packages.${system}.default} -d fmt -w
+              git ls-files | ${lib.getExe self.packages.${system}.default} fmt -w
             ''
           );
+
+        mkFormatCheck =
+          let
+            self' = self;
+          in
+          {
+            system,
+            self,
+            src ? self,
+            pkgs ? inputs.nixpkgs.legacyPackages.${system},
+            lib ? inputs.nixpkgs.lib,
+            config ? self.packages.${system}.ash-config,
+            formatAll ? false,
+          }:
+          pkgs.runCommand "check"
+            {
+              inherit src;
+              buildInputs = [ self'.packages.${system}.ash ];
+              ASH_SINGLETON_CONFIG = config;
+            }
+            ''
+              set -eu
+              cd $src
+              find . -type f | a.sh fmt -D
+              touch "$out"
+            '';
       };
 
       packages = forEachSystem {
         do =
-          { pkgs, ... }:
+          { pkgs, self', ... }:
           {
-            default = pkgs.callPackage ./nix { };
+            default = self'.packages.ash;
+
+            ash = self.lib.mkAshShell pkgs {
+              enableAllLanguages = true;
+            };
+
+            ash-full = self.lib.mkAshShell pkgs {
+              emitPaths = true;
+              enableAllLanguages = true;
+            };
+
             ash-config = self.lib.mkAshConfig pkgs {
               emitPaths = true;
               usedLanguages = [
@@ -112,10 +158,13 @@
           {
             self',
             pkgs,
+            system,
             ...
           }:
           {
-            ash = self'.packages.default;
+            ash = self'.packages.ash;
+            ash-full = self'.packages.ash-full;
+            formatcheck = self.lib.mkFormatCheck { inherit system self; };
           };
       };
     };

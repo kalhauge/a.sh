@@ -66,6 +66,7 @@ in
 
   options = {
     emitPaths = mkEnableOption "emit paths";
+    enableAllLanguages = mkEnableOption "enables all languages";
 
     languages = mkOption {
       type = types.attrsOf (
@@ -75,6 +76,9 @@ in
             formatters = mkOption {
               type = types.listOf (types.enum (builtins.attrNames options.formatters));
             };
+          };
+          config = {
+            enable = mkIf config.enableAllLanguages true;
           };
         }
       );
@@ -106,6 +110,12 @@ in
     };
 
     output-json = mkOption {
+      type = types.package;
+      readOnly = true;
+    };
+
+    output-shell = mkOption {
+      type = types.package;
       readOnly = true;
     };
   };
@@ -143,5 +153,6 @@ in
     };
 
     output-json = pkgs.writeText "ash.json" (builtins.toJSON (config.output));
+    output-shell = pkgs.callPackage ./default.nix { ash-config = config.output-json; };
   };
 }

@@ -369,7 +369,7 @@ function cmd-fmt() {
 
   local mode=check
   local print_diff=0
-  while getopts "hcw" opt; do
+  while getopts "hcwD" opt; do
     case "$opt" in
     h) usage ;;
     c) mode=check ;;
@@ -393,7 +393,7 @@ function cmd-fmt() {
     mapfile -t ARGS
   fi
 
-  local updates=()
+  local changes=()
   for file in "${ARGS[@]}"; do
     1>&2 printf '%-40s' "$file"
 
@@ -436,12 +436,17 @@ function cmd-fmt() {
   done
 
   log "found ${#changes[@]} changes"
+
+  if [ "${#changes[@]}" -eq 0 ]; then
+    return 0
+  fi
+
   if ((print_diff)); then
     for c in "${changes[@]}"; do
       diff --color=always $c || true
     done
   fi
-  
+
   case "$mode" in
   check)
     log "accept using:"
@@ -454,6 +459,7 @@ function cmd-fmt() {
     for c in "${changes[@]}"; do
       mv $c
     done
+    ;;
   esac
 }
 
