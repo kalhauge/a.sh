@@ -254,19 +254,19 @@ function cmd-fmt-find() {
   shift $((OPTIND - 1))
   OPTIND=0
 
+  if [ -n "${file:-}" ]; then
+    if git check-attr "format" -- "$file" 2>/dev/null | grep -q 'unset'; then
+      debug "file ${file} ignored"
+      return 3
+    fi
+  fi
+
   if [ -z "${language:-}" ]; then
     if [ -z "${file:-}" ]; then
       log "Error: expected either -f file or -l language"
       usage
     fi
     language=$(cmd-language "$file")
-  fi
-
-  if [ -n "${file:-}" ]; then
-    if git check-attr "format" -- "$file" 2>/dev/null | grep -q 'unset'; then
-      debug "file ${file} ignored"
-      return 3
-    fi
   fi
 
   mapfile -d '' formatters < <(cmd-config -cer -l "$language" '.formatters[]?')
