@@ -483,7 +483,7 @@ done
 shift $((OPTIND - 1))
 OPTIND=0
 
-find_prj_root() { 
+find_prj_root() {
   git rev-parse --show-toplevel 2>/dev/null || true
 }
 

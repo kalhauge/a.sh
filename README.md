@@ -22,7 +22,7 @@ nix run github:kalhauge/a.sh -- ARGS
 
 ## Configuration
 
-## TODO 
+## TODO
 
 Follow https://github.com/numtide/prj-spec/blob/main/PRJ_SPEC.md
 

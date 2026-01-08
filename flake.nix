@@ -20,7 +20,7 @@
           systems ? supportedSystems,
           do,
         }:
-        inputs.nixpkgs.lib.genAttrs supportedSystems (
+        inputs.nixpkgs.lib.genAttrs systems (
           system:
           do {
             inherit system;
@@ -72,22 +72,30 @@
             // extra-config
           )).config.output-shell;
 
+        mkFormatterForEachSystem =
+          {
+            systems ? supportedSystems,
+            configPerSystem ? system: "packages.${system}.ash-config",
+          }:
+          inputs.nixpkgs.lib.genAttrs systems (
+            system:
+            self.lib.mkFormatter {
+              inherit system;
+              configPath = configPerSystem system;
+            }
+          );
+
         mkFormatter =
           {
             system,
             pkgs ? inputs.nixpkgs.legacyPackages.${system},
             lib ? inputs.nixpkgs.lib,
             configPath ? "packages.${system}.ash-config",
-            formatAll ? false,
           }:
-          pkgs.writeShellScriptBin "format.sh" (
-            ''
-              nix build .#${configPath} --out-link ash.json
-            ''
-            + lib.optionalString formatAll ''
-              git ls-files | ${lib.getExe self.packages.${system}.default} fmt -w
-            ''
-          );
+          pkgs.writeShellScriptBin "format.sh" ''
+            nix build .#${configPath} --out-link ash.json
+            git ls-files | ${lib.getExe self.packages.${system}.default} fmt $@
+          '';
 
         mkFormatCheck =
           let
@@ -144,13 +152,9 @@
             };
           };
       };
-      formatter = forEachSystem {
-        do =
-          { system, ... }:
-          self.lib.mkFormatter {
-            inherit system;
-            formatAll = true;
-          };
+
+      formatter = self.lib.mkFormatterForEachSystem {
+        systems = supportedSystems;
       };
 
       checks = forEachSystem {
