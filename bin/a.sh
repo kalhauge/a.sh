@@ -288,6 +288,10 @@ function cmd-fmt-find() {
   fi
 
   for fname in "${formatters[@]}"; do
+    if [ "$fname" == "skip" ]; then
+      return 3
+    fi
+
     mapfile -d '' formatter < <(cmd-config -rcF "$fname" '
       (if .path then .path + "/" + .command else .command end), 
       .args[]?')
@@ -415,7 +419,7 @@ function cmd-fmt() {
     if ((result)); then
       if [ $result == 2 ]; then
         local language=$(cmd-language "$file")
-        1>&2 printf '%30s\n' "skipped [$language]"
+        1>&2 printf '%30s\n' "no fmt [$language]"
         continue
       fi
       return $result

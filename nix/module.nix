@@ -74,7 +74,7 @@ in
           options = {
             enable = mkEnableOption "the language";
             formatters = mkOption {
-              type = types.listOf (types.enum (builtins.attrNames options.formatters));
+              type = types.listOf (types.enum (builtins.attrNames options.formatters ++ [ "skip" ]));
             };
           };
           config = {
@@ -120,10 +120,12 @@ in
     };
   };
   config = {
-    neededFormatters = lib.unique (
-      lib.concatLists (
-        builtins.map (lang: config.output.languages.${lang}.formatters) (
-          builtins.attrNames config.output.languages
+    neededFormatters = builtins.filter (lang: lang != "skip") (
+      lib.unique (
+        lib.concatLists (
+          builtins.map (lang: config.output.languages.${lang}.formatters) (
+            builtins.attrNames config.output.languages
+          )
         )
       )
     );

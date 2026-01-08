@@ -1,10 +1,22 @@
 {
   config.languages = {
     "Git Attributes" = {
-      formatters = [ ];
+      formatters = [ "skip" ];
     };
     "Ignore List" = {
-      formatters = [ ];
+      formatters = [ "skip" ];
+    };
+    "Public Key" = {
+      formatters = [ "skip" ];
+    };
+    "Text" = {
+      formatters = [ "skip" ];
+    };
+    "TSV" = {
+      formatters = [ "skip" ];
+    };
+    "CSV" = {
+      formatters = [ "skip" ];
     };
     "Markdown" = {
       formatters = [ "mdformat" ];

@@ -154,6 +154,7 @@
                 "Ignore List"
                 "JSON"
                 "Markdown"
+                "TSV"
               ];
             };
           };
