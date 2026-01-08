@@ -119,6 +119,7 @@ function cmd-language() {
       for lang in "${language[@]}"; do
         log "  $arg linguist-language=${lang// /-}"
       done
+      return 1
     fi
     echo "${language}"
   done
@@ -261,6 +262,13 @@ function cmd-fmt-find() {
     language=$(cmd-language "$file")
   fi
 
+  if [ -n "${file:-}" ]; then
+    if git check-attr "format" -- "$file" 2>/dev/null | grep -q 'unset'; then
+      debug "file ${file} ignored"
+      return 3
+    fi
+  fi
+
   mapfile -d '' formatters < <(cmd-config -cer -l "$language" '.formatters[]?')
 
   if [ ${#formatters[@]} -eq 0 ]; then
@@ -396,7 +404,6 @@ function cmd-fmt() {
 
   local changes=()
   for file in "${ARGS[@]}"; do
-    1>&2 printf '%-40s' "$file"
 
     local language=$(cmd-language "$file")
 
@@ -404,10 +411,14 @@ function cmd-fmt() {
 
     local result=0
     formatter=$(cmd-fmt-find -f "$file" "$language") || result=$?
+    if [ $result == 3 ]; then
+      continue
+    fi
 
+    1>&2 printf '%-50s' "$file"
     if ((result)); then
       if [ $result == 2 ]; then
-        1>&2 printf '%20s\n' "skipped [$language]"
+        1>&2 printf '%30s\n' "skipped [$language]"
         continue
       fi
       return $result
@@ -421,17 +432,17 @@ function cmd-fmt() {
 
     if ((result)); then
       log "Error: got non-zero exit-code: $result"
-      1>&2 printf '%20s\n' "error ($result)"
+      1>&2 printf '%30s\n' "error ($result)"
       return "$result"
     fi
 
     if 1>/dev/null diff -q ${file} ${fmt_file}; then
-      1>&2 printf '%20s\n' "unchanged"
+      1>&2 printf '%30s\n' "unchanged"
       rm -rf "${fmt_file}"
       continue
     fi
 
-    1>&2 printf '%20s\n' "changed"
+    1>&2 printf '%30s\n' "changed"
     changes+=("$(printf '%q ' "${fmt_file}" "${file}")")
 
   done
@@ -485,7 +496,7 @@ shift $((OPTIND - 1))
 OPTIND=0
 
 find_prj_root() {
-  local old_pwd
+  local old_pwd=""
   while [[ $old_pwd != "$PWD" ]]; do
     if [[ -d .config ]]; then
       echo "$PWD"
