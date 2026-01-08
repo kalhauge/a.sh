@@ -90,7 +90,8 @@ function cmd-language() {
     git check-attr "${GIT_ATTRS[@]}" -- "$arg" 2>/dev/null |
       awk -F': ' '
         $3 != "unset" && $3 != "unspecified" { print $3 }
-      '
+      ' |
+      sed "s/-/ /g"
   }
 
   function enry_source() {
