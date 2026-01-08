@@ -93,8 +93,14 @@
             configPath ? "packages.${system}.ash-config",
           }:
           pkgs.writeShellScriptBin "format.sh" ''
-            nix build .#${configPath} --out-link ash.json
-            git ls-files | ${lib.getExe self.packages.${system}.default} fmt $@
+            FILE="$PRJ_ROOT/.config/ash.json"
+
+            grep -qxF ".config/ash.json" "$PRJ_ROOT/.gitignore" || 
+              echo ".config/ash.json" >> "$PRJ_ROOT/.gitignore" && 
+              git rm --cached -f --ignore-unmatch "$FILE"
+
+            nix build .#${configPath} --out-link "$FILE"
+            git ls-files . | ${lib.getExe self.packages.${system}.default} fmt $@
           '';
 
         mkFormatCheck =

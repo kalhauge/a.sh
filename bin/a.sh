@@ -484,10 +484,23 @@ shift $((OPTIND - 1))
 OPTIND=0
 
 find_prj_root() {
-  git rev-parse --show-toplevel 2>/dev/null || true
+  local old_pwd
+  while [[ $old_pwd != "$PWD" ]]; do
+    if [[ -d .config ]]; then
+      echo "$PWD"
+      return 0
+    fi
+    old_pwd=$PWD
+    cd ..
+    if [[ $old_pwd == "$PWD" ]]; then
+      log "ERROR: could not find project root"
+      return 1
+    fi
+  done
 }
 
 : "${PRJ_ROOT:=$(find_prj_root)}"
+: "${PRJ_ROOT:=$(git rev-parse --show-toplevel 2>/dev/null)}"
 
 if [ -z "$PRJ_ROOT" ]; then
   debug "Could not find git root directory"
@@ -510,12 +523,12 @@ function config-find() {
     fi
   else
 
-    local CONFIGS_DIRS=("${PRJ_ROOT:-.}")
+    local CONFIGS_DIRS=("${PRJ_ROOT:-.}/.config")
 
     if ! ((safe_mode)) || [ -z "${PRJ_ROOT:-}" ]; then
       CONFIGS_DIRS+=(
-        "${XDG_CONFIG_DIRS:-$HOME/.config}/ash"
-        "$HOME/.ash"
+        "${XDG_CONFIG_DIRS:-$HOME/.config}"
+        "$HOME"
         "$ASH_DIR/share"
       )
     fi
