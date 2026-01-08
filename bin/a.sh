@@ -405,12 +405,8 @@ function cmd-fmt() {
   local changes=()
   for file in "${ARGS[@]}"; do
 
-    local language=$(cmd-language "$file")
-
-    debug "found language $language"
-
     local result=0
-    formatter=$(cmd-fmt-find -f "$file" "$language") || result=$?
+    formatter=$(cmd-fmt-find -f "$file") || result=$?
     if [ $result == 3 ]; then
       continue
     fi
@@ -418,6 +414,7 @@ function cmd-fmt() {
     1>&2 printf '%-50s' "$file"
     if ((result)); then
       if [ $result == 2 ]; then
+        local language=$(cmd-language "$file")
         1>&2 printf '%30s\n' "skipped [$language]"
         continue
       fi
