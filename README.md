@@ -52,7 +52,7 @@ nix run github:kalhauge/a.sh -- ARGS
 
 ## Configuration
 
-## TODO
+### TODO
 
 Follow https://github.com/numtide/prj-spec/blob/main/PRJ_SPEC.md
 
@@ -65,3 +65,7 @@ See https://github.com/github-linguist/linguist/blob/main/docs/overrides.md#usin
 - As a user I would like to specify which tools should handle my code, and have those easily interact with my editor and shell environments.
 
 - The configuration of the repository should take precedence
+
+## Strech Goals
+
+- Support multi-project repositories
