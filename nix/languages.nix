@@ -23,6 +23,7 @@
     };
     "Python" = {
       formatters = [ "ruff" ];
+      servers = [ "ty" ];
     };
     "TOML" = {
       formatters = [ "tomll" ];
@@ -32,6 +33,7 @@
     };
     "Nix" = {
       formatters = [ "nixfmt" ];
+      servers = [ "nixd" ];
     };
     "Shell" = {
       formatters = [ "shfmt" ];

@@ -1,10 +1,40 @@
-# Ash - One developer tool to rule them all.
+# A.sh - One developer tool to rule them all.
 
 It makes no sense that every editor needs to be configured with every language
 out there. Instead we should just have one developer tool, which directs the
 correct queries to the right apps.
 
-Ash is a single bash script, which does this.
+A.sh is a single bash script, which does this.
+
+## Features
+
+The goal of this project is to be a one-stop-shop for most language related
+developer workflows.
+
+### Language
+
+Auto detect what langauage a file has.
+
+### Format
+
+Format the code so that complies with the rules.
+
+### Check
+
+Run linters and static analyses.
+
+### Test and Debug
+
+Run the test-suite, and attach to it if you need to debug it.
+
+### Serve
+
+Start a lsp server for any language you have configured.
+
+*Strech goals* be a single lsp which can call others. Futhermore, make sure
+that all the other capabilities are exposed through the code.
+
+### Configure
 
 ## Install
 

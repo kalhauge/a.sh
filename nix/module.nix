@@ -14,18 +14,33 @@ let
     mkPackageOption
     ;
 
-  mkFormatter =
-    name:
+  superconfig = config;
+
+  nixFilesOf =
+    dir:
+    let
+      files = builtins.readDir dir;
+    in
+    map (name: lib.removeSuffix ".nix" name) (
+      lib.filter (name: files.${name} == "regular") (builtins.attrNames files)
+    );
+
+  mkTool =
+    {
+      kind,
+      config_file,
+      name,
+    }:
     mkOption {
       default = { };
-      description = "Configuration for formatter ${name}";
+      description = "Configuration for ${kind} ${name}";
       type = types.submodule (
         { config, ... }:
         {
           imports = [
             (
               let
-                m = import ./formatters/${name}.nix;
+                m = import config_file;
               in
               if builtins.typeOf m == "set" then { config = m; } else m
             )
@@ -59,6 +74,21 @@ let
       );
     };
 
+  mkFormatter =
+    name:
+    mkTool {
+      kind = "formatter";
+      name = name;
+      config_file = ./formatters/${name}.nix;
+    };
+
+  mkServer =
+    name:
+    mkTool {
+      kind = "server";
+      name = name;
+      config_file = ./servers/${name}.nix;
+    };
 in
 {
 
@@ -75,6 +105,11 @@ in
             enable = mkEnableOption "the language";
             formatters = mkOption {
               type = types.listOf (types.enum (builtins.attrNames options.formatters ++ [ "skip" ]));
+              default = [ ];
+            };
+            servers = mkOption {
+              type = types.listOf (types.enum (builtins.attrNames options.servers ++ [ "skip" ]));
+              default = [ ];
             };
           };
           config = {
@@ -91,19 +126,19 @@ in
       default = [ ];
     };
 
+    neededServers = mkOption {
+      type = types.listOf types.str;
+      default = [ ];
+    };
+
     usedLanguages = mkOption {
       type = types.listOf types.str;
       default = [ ];
     };
 
-    formatters =
-      let
-        files = builtins.readDir ./formatters;
-        formatters = map (name: lib.removeSuffix ".nix" name) (
-          lib.filter (name: files.${name} == "regular") (builtins.attrNames files)
-        );
-      in
-      lib.genAttrs formatters mkFormatter;
+    formatters = lib.genAttrs (nixFilesOf ./formatters) mkFormatter;
+
+    servers = lib.genAttrs (nixFilesOf ./servers) mkServer;
 
     output = mkOption {
       readOnly = true;
@@ -130,7 +165,21 @@ in
       )
     );
 
+    neededServers = builtins.filter (lang: lang != "skip") (
+      lib.unique (
+        lib.concatLists (
+          builtins.map (lang: config.output.languages.${lang}.servers) (
+            builtins.attrNames config.output.languages
+          )
+        )
+      )
+    );
+
     formatters = lib.genAttrs config.neededFormatters (keys: {
+      enable = true;
+    });
+
+    servers = lib.genAttrs config.neededServers (keys: {
       enable = true;
     });
 
@@ -140,19 +189,18 @@ in
 
     output = {
       inherit (config) neededFormatters;
-
-      languages = lib.mapAttrs (key: val: { inherit (val) formatters; }) (
-        lib.filterAttrs (key: val: val.enable) config.languages
-      );
-
-      formatters = lib.mapAttrs (
+      languages = lib.filterAttrs (key: val: val.enable) config.languages;
+    }
+    // lib.genAttrs [ "formatters" "servers" ] (
+      kind:
+      lib.mapAttrs (
         key: val:
         {
           inherit (val) command args;
         }
-        // (if config.emitPaths then { inherit (val) path; } else { })
-      ) (lib.filterAttrs (key: val: val.enable) config.formatters);
-    };
+        // (if config.emitPaths && builtins.hasAttr "path" val then { inherit (val) path; } else { })
+      ) (lib.filterAttrs (key: val: val.enable) config.${kind})
+    );
 
     output-json = pkgs.writeText "ash.json" (builtins.toJSON (config.output));
     output-shell = pkgs.callPackage ./default.nix { ash-config = config.output-json; };
