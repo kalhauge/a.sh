@@ -160,6 +160,13 @@
           };
       };
 
+      templates = {
+        minimal = {
+          path = ./nix/templates/minimal;
+          description = "a minimal a.sh setup";
+        };
+      };
+
       formatter = self.lib.mkFormatterForEachSystem {
         systems = supportedSystems;
       };

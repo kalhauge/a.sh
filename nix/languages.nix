@@ -18,6 +18,9 @@
     "CSV" = {
       formatters = [ "skip" ];
     };
+    "C" = {
+      formatters = [ "clang-format" ];
+    };
     "Markdown" = {
       formatters = [ "mdformat" ];
     };
