@@ -21,6 +21,9 @@
     "C" = {
       formatters = [ "clang-format" ];
     };
+    "Zig" = {
+      formatters = [ "zig" ];
+    };
     "Markdown" = {
       formatters = [ "mdformat" ];
     };
