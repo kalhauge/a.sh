@@ -12,22 +12,27 @@
       default = true;
       description = "make numbers increment in ordered lists";
     };
-    wikilinks = lib.mkOption {
+    wikilink = lib.mkOption {
       type = lib.types.bool;
-      default = false;
+      default = true;
       description = "support wikilinks";
+    };
+    frontmatter = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "support frontmatter";
     };
   };
 
   config = {
     command = "mdformat";
     package = (
-      if config.wikilinks then
-        (pkgs.mdformat.withPlugins (ps: [
-          ps.mdformat-wikilink
-        ]))
-      else
-        pkgs.mdformat
+      (pkgs.mdformat.withPlugins (
+        ps:
+        [ ]
+        ++ (if config.wikilink then [ ps.mdformat-wikilink ] else [ ])
+        ++ (if config.frontmatter then [ ps.mdformat-frontmatter ] else [ ])
+      ))
     );
     args = (if config.number then [ "--number" ] else [ ]) ++ [ "-" ];
   };
