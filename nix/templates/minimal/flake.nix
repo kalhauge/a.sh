@@ -20,6 +20,10 @@
       lib = inputs.nixpkgs.lib;
       ash = inputs.ash.lib;
 
+      overlays = [
+        (final: prev: { })
+      ];
+
       forEachSystem =
         {
           systems ? supportedSystems,
@@ -31,6 +35,7 @@
             inherit system;
             pkgs = import inputs.nixpkgs {
               inherit system;
+              overlays = overlays;
             };
             self' = inputs.nixpkgs.lib.mapAttrs (k: v: v.${system}) self;
           }
@@ -64,7 +69,7 @@
             ...
           }:
           {
-            formatcheck = self.lib.mkFormatCheck { inherit system self; };
+            formatcheck = inputs.ash.lib.mkFormatCheck { inherit system self; };
           };
       };
     };
