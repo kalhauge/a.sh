@@ -3,187 +3,177 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";
+    flake-parts.url = "github:hercules-ci/flake-parts";
   };
 
   outputs =
-    { self, ... }@inputs:
-    let
-      supportedSystems = [
-        "x86_64-linux" # 64-bit Intel/AMD Linux
-        "aarch64-linux" # 64-bit ARM Linux
-        "aarch64-darwin" # 64-bit ARM macOS
-        "x86_64-darwin" # 64-bit Intel/AMD Linux
-      ];
+    inputs@{ flake-parts, ... }:
+    flake-parts.lib.mkFlake { inherit inputs; } (
+      top@{
+        self,
+        config,
+        withSystem,
+        moduleWithSystem,
+        ...
+      }:
+      {
+        imports = [
+        ];
+        flake = {
+          lib = rec {
+            mkSimpleModule =
+              mod:
+              if builtins.typeOf mod == "set" then
+                { ... }:
+                {
+                  config = mod;
+                }
+              else if builtins.typeOf mod == "file" then
+                mkSimpleModule (import mod)
+              else
+                mod;
+            mkAshModule =
+              extra-config:
+              (inputs.nixpkgs.lib.evalModules {
+                modules = [
+                  (mkSimpleModule extra-config)
+                  ./nix/module.nix
+                ];
+              });
 
-      forEachSystem =
-        {
-          systems ? supportedSystems,
-          do,
-        }:
-        inputs.nixpkgs.lib.genAttrs systems (
-          system:
-          do {
-            inherit system;
-            pkgs = import inputs.nixpkgs {
-              inherit system;
-            };
-            lib = inputs.nixpkgs.lib;
-            self' = inputs.nixpkgs.lib.mapAttrs (k: v: v.${system}) self;
-          }
-        );
-    in
-    {
-      lib = rec {
-        mkSimpleModule =
-          mod:
-          if builtins.typeOf mod == "set" then
-            { ... }:
-            {
-              config = mod;
-            }
-          else if builtins.typeOf mod == "file" then
-            mkSimpleModule (import mod)
-          else
-            mod;
-        mkAshModule =
-          extra-config:
-          (inputs.nixpkgs.lib.evalModules {
-            modules = [
-              (mkSimpleModule extra-config)
-              ./nix/module.nix
-            ];
-          });
+            mkAshConfig =
+              pkgs: extra-config:
+              (mkAshModule (
+                {
+                  _module.args = { inherit pkgs; };
+                }
+                // extra-config
+              )).config.output-json;
 
-        mkAshConfig =
-          pkgs: extra-config:
-          (mkAshModule (
-            {
-              _module.args = { inherit pkgs; };
-            }
-            // extra-config
-          )).config.output-json;
+            mkAshShell =
+              pkgs: extra-config:
+              (mkAshModule (
+                {
+                  _module.args = { inherit pkgs; };
+                }
+                // extra-config
+              )).config.output-shell;
 
-        mkAshShell =
-          pkgs: extra-config:
-          (mkAshModule (
-            {
-              _module.args = { inherit pkgs; };
-            }
-            // extra-config
-          )).config.output-shell;
+            mkFormatterForEachSystem =
+              {
+                systems,
+                configPerSystem ? system: "packages.${system}.ash-config",
+              }:
+              inputs.nixpkgs.lib.genAttrs systems (
+                system:
+                self.lib.mkFormatter {
+                  inherit system;
+                  configPath = configPerSystem system;
+                }
+              );
 
-        mkFormatterForEachSystem =
-          {
-            systems ? supportedSystems,
-            configPerSystem ? system: "packages.${system}.ash-config",
-          }:
-          inputs.nixpkgs.lib.genAttrs systems (
-            system:
-            self.lib.mkFormatter {
-              inherit system;
-              configPath = configPerSystem system;
-            }
-          );
+            mkFormatter =
+              {
+                system,
+                pkgs ? inputs.nixpkgs.legacyPackages.${system},
+                lib ? inputs.nixpkgs.lib,
+                configPath ? "packages.${system}.ash-config",
+              }:
+              withSystem system (
+                { config, ... }:
+                pkgs.writeShellScriptBin "format.sh" ''
+                  FILE="$PRJ_ROOT/.config/ash.json"
 
-        mkFormatter =
-          {
-            system,
-            pkgs ? inputs.nixpkgs.legacyPackages.${system},
-            lib ? inputs.nixpkgs.lib,
-            configPath ? "packages.${system}.ash-config",
-          }:
-          pkgs.writeShellScriptBin "format.sh" ''
-            FILE="$PRJ_ROOT/.config/ash.json"
+                  grep -qxF ".config/ash.json" "$PRJ_ROOT/.gitignore" || 
+                    echo ".config/ash.json" >> "$PRJ_ROOT/.gitignore" && 
+                    git rm --cached -f --ignore-unmatch "$FILE"
 
-            grep -qxF ".config/ash.json" "$PRJ_ROOT/.gitignore" || 
-              echo ".config/ash.json" >> "$PRJ_ROOT/.gitignore" && 
-              git rm --cached -f --ignore-unmatch "$FILE"
+                  nix build .#${configPath} --out-link "$FILE"
+                  git ls-files . | ${lib.getExe config.packages.default} fmt $@
+                ''
+              );
 
-            nix build .#${configPath} --out-link "$FILE"
-            git ls-files . | ${lib.getExe self.packages.${system}.default} fmt $@
-          '';
-
-        mkFormatCheck =
-          let
-            self' = self;
-          in
-          {
-            system,
-            self,
-            src ? self,
-            pkgs ? inputs.nixpkgs.legacyPackages.${system},
-            lib ? inputs.nixpkgs.lib,
-            config ? self.packages.${system}.ash-config,
-            formatAll ? false,
-          }:
-          pkgs.runCommand "check"
-            {
-              inherit src;
-              buildInputs = [ self'.packages.${system}.ash ];
-              ASH_SINGLETON_CONFIG = config;
-            }
-            ''
-              set -eu
-              cd $src
-              find . -type f | a.sh fmt -D
-              touch "$out"
-            '';
-      };
-
-      packages = forEachSystem {
-        do =
-          { pkgs, self', ... }:
-          {
-            default = self'.packages.ash;
-
-            ash = self.lib.mkAshShell pkgs {
-              enableAllLanguages = true;
-            };
-
-            ash-full = self.lib.mkAshShell pkgs {
-              emitPaths = true;
-              enableAllLanguages = true;
-            };
-
-            ash-config = self.lib.mkAshConfig pkgs {
-              emitPaths = true;
-              usedLanguages = [
-                "Git Attributes"
-                "Nix"
-                "Shell"
-                "Ignore List"
-                "JSON"
-                "Markdown"
-                "TSV"
-              ];
+            mkFormatCheck =
+              {
+                system,
+                self,
+                src ? self,
+                pkgs ? inputs.nixpkgs.legacyPackages.${system},
+                lib ? inputs.nixpkgs.lib,
+                config ? self.packages.${system}.ash-config,
+                formatAll ? false,
+              }:
+              pkgs.runCommand "check"
+                {
+                  inherit src;
+                  buildInputs = [ self.packages.${system}.ash ];
+                  ASH_SINGLETON_CONFIG = config;
+                }
+                ''
+                  set -eu
+                  cd $src
+                  find . -type f | a.sh fmt -D
+                  touch "$out"
+                '';
+          };
+          templates = {
+            minimal = {
+              path = ./nix/templates/minimal;
+              description = "a minimal a.sh setup";
             };
           };
-      };
-
-      templates = {
-        minimal = {
-          path = ./nix/templates/minimal;
-          description = "a minimal a.sh setup";
         };
-      };
+        systems = [
+          "x86_64-linux"
+          "aarch64-linux"
+          "aarch64-darwin"
+          "x86_64-darwin"
+        ];
 
-      formatter = self.lib.mkFormatterForEachSystem {
-        systems = supportedSystems;
-      };
-
-      checks = forEachSystem {
-        do =
+        perSystem =
           {
-            self',
+            config,
             pkgs,
+            self',
             system,
             ...
           }:
           {
-            ash = self'.packages.ash;
-            ash-full = self'.packages.ash-full;
-            formatcheck = self.lib.mkFormatCheck { inherit system self; };
+            packages = {
+              default = self'.packages.ash;
+
+              ash = self.lib.mkAshShell pkgs {
+                enableAllLanguages = true;
+              };
+
+              ash-full = self.lib.mkAshShell pkgs {
+                emitPaths = true;
+                enableAllLanguages = true;
+              };
+
+              ash-config = self.lib.mkAshConfig pkgs {
+                emitPaths = true;
+                usedLanguages = [
+                  "Git Attributes"
+                  "Nix"
+                  "Shell"
+                  "Ignore List"
+                  "JSON"
+                  "Markdown"
+                  "TSV"
+                ];
+              };
+            };
+            formatter = self.lib.mkFormatter {
+              inherit system;
+            };
+
+            checks = {
+              ash = self'.packages.ash;
+              ash-full = self'.packages.ash-full;
+              formatcheck = self.lib.mkFormatCheck { inherit system self; };
+            };
           };
-      };
-    };
+      }
+    );
 }
