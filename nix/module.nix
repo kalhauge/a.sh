@@ -153,6 +153,16 @@ in
       type = types.package;
       readOnly = true;
     };
+
+    output-formatter = mkOption {
+      type = types.package;
+      readOnly = true;
+    };
+
+    output-check = mkOption {
+      readOnly = true;
+    };
+
   };
   config = {
     neededFormatters = builtins.filter (lang: lang != "skip") (
@@ -203,6 +213,35 @@ in
     );
 
     output-json = pkgs.writeText "ash.json" (builtins.toJSON (config.output));
+
     output-shell = pkgs.callPackage ./default.nix { ash-config = config.output-json; };
+
+    output-formatter = pkgs.writeShellScriptBin "format.sh" ''
+      FILE="$PRJ_ROOT/.config/ash.json"
+
+      set -x
+
+      grep -qxF ".config/ash.json" "$PRJ_ROOT/.gitignore" || 
+        echo ".config/ash.json" >> "$PRJ_ROOT/.gitignore" && 
+        git rm --cached -f --ignore-unmatch "$FILE"
+
+      nix-store --add-root "$FILE" --realise ${config.output-json}
+      git ls-files . | ${lib.getExe config.output-shell} fmt $@
+    '';
+
+    output-check =
+      { src, ... }:
+      pkgs.runCommand "check"
+        {
+          inherit src;
+          buildInputs = [ config.output-shell ];
+          ASH_SINGLETON_CONFIG = config.output-json;
+        }
+        ''
+          set -eu
+          cd $src
+          find . -type f | a.sh fmt -D
+          touch "$out"
+        '';
   };
 }
