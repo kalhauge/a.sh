@@ -3,74 +3,51 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";
+    flake-parts.url = "github:hercules-ci/flake-parts";
     ash.url = "github:kalhauge/a.sh";
     ash.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
-    { self, ... }@inputs:
-    let
-      supportedSystems = [
-        "x86_64-linux" # 64-bit Intel/AMD Linux
-        "aarch64-linux" # 64-bit ARM Linux
-        "aarch64-darwin" # 64-bit ARM macOS
-        "x86_64-darwin" # 64-bit Intel/AMD Linux
-      ];
+    inputs@{ flake-parts, ... }:
+    flake-parts.lib.mkFlake { inherit inputs; } (
+      top@{ self, config, ... }:
+      {
+        imports = [
+          inputs.ash.flakeModules.default
+        ];
 
-      lib = inputs.nixpkgs.lib;
-      ash = inputs.ash.lib;
+        flake = {
+          # Your flake goes here
+        };
 
-      overlays = [
-        (final: prev: { })
-      ];
-
-      forEachSystem =
-        {
-          systems ? supportedSystems,
-          do,
-        }:
-        inputs.nixpkgs.lib.genAttrs systems (
-          system:
-          do {
-            inherit system;
-            pkgs = import inputs.nixpkgs {
-              inherit system;
-              overlays = overlays;
-            };
-            self' = inputs.nixpkgs.lib.mapAttrs (k: v: v.${system}) self;
-          }
-        );
-    in
-    {
-      packages = forEachSystem {
-        do =
-          { pkgs, self', ... }:
+        perSystem =
+          { config, ... }:
           {
-            ash-config = ash.mkAshConfig pkgs {
-              emitPaths = true;
-              usedLanguages = [
-                "Git Attributes"
-                "Nix"
-              ];
+            ash = {
+              enable = true;
+              config = {
+                emitPaths = true;
+                usedLanguages = [
+                  "Git Attributes"
+                  "Nix"
+                  "Ignore List"
+                  "JSON"
+                  "Markdown"
+                ];
+
+              };
+            };
+
+            packages = {
+              # Your packages
             };
           };
-      };
-
-      formatter = ash.mkFormatterForEachSystem {
-        systems = supportedSystems;
-      };
-
-      checks = forEachSystem {
-        do =
-          {
-            self',
-            pkgs,
-            system,
-            ...
-          }:
-          {
-            formatcheck = inputs.ash.lib.mkFormatCheck { inherit system self; };
-          };
-      };
-    };
+        systems = [
+          "x86_64-linux"
+          "aarch64-linux"
+          "aarch64-darwin"
+        ];
+      }
+    );
 }
