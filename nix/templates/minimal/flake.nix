@@ -6,6 +6,7 @@
     flake-parts.url = "github:hercules-ci/flake-parts";
     ash.url = "github:kalhauge/a.sh";
     ash.inputs.nixpkgs.follows = "nixpkgs";
+    ash.inputs.flake-parts.follows = "flake-parts";
   };
 
   outputs =
