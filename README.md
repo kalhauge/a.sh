@@ -66,6 +66,8 @@ See https://github.com/github-linguist/linguist/blob/main/docs/overrides.md#usin
 
 - The configuration of the repository should take precedence
 
+- Can we tap into the module system a little more?
+
 ## Strech Goals
 
 - Support multi-project repositories

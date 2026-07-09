@@ -24,6 +24,9 @@
     "Zig" = {
       formatters = [ "zig" ];
     };
+    "Haskell" = {
+      formatters = [ "fourmolu" ];
+    };
     "Markdown" = {
       formatters = [ "mdformat" ];
     };
