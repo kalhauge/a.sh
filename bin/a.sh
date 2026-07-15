@@ -278,156 +278,23 @@ function cmd-fmt-find() {
     language=$(cmd-language "$file")
   fi
 
-  mapfile -d '' formatters < <(cmd-config -cer -l "$language" '.formatters[]?')
+  mapfile -d '' formatter < <(cmd-config -rcF "$language" '(.program, .args[]?)')
 
-  if [ ${#formatters[@]} -eq 0 ]; then
-    if ! ((strict)); then
-      debug "found no debugger for ${language}"
-      return 2
-    fi
-    log "Error: no formatter for $language"
-
-    if [ -n "$file" ]; then
-      log "Or ignore in .gitattributes by adding a line:"
-      log
-      log "  $file -format"
-      log
-    fi
-    return 1
+  if [ "${formatter[0]}" == "null" ]; then
+    debug "Found null formatter for $language, ignoring it"
+    return 2
   fi
 
-  for fname in "${formatters[@]}"; do
-    if [ "$fname" == "skip" ]; then
-      return 3
-    fi
+  debug "Found formatter:"
+  debug "  ${formatter[@]}"
 
-    mapfile -d '' formatter < <(cmd-config -rcF "$fname" '
-      (if .path then .path + "/" + .command else .command end), 
-      .args[]?')
+  if ((check)); then
+    debug "with version: $(${formatter[0]} --version)"
+  fi
 
-    if [ "${formatter[0]}" == "null" ]; then
-      debug "Found null formatter for $language, ignoring it"
-      return 2
-    fi
-
-    local EXE=$(which "${formatter[0]}" || true)
-    if [ -z "${EXE:-}" ]; then
-      log "Error: formatter not on path: ${formatter[0]}"
-      return 1
-    fi
-
-    formatter[0]="${EXE}"
-
-    debug "Found formatter:"
-    debug "  ${formatter[@]}"
-
-    if ((check)); then
-      debug "with version: $(${formatter[0]} --version)"
-    fi
-
-    printf '%q ' "${formatter[@]}"
-  done
+  printf '%q ' "${formatter[@]}"
 }
 
-doc_server_find="get server for a language"
-function cmd-server-find() {
-  function usage() {
-    log "Usage: $0 fmt-find [-hcx] [-f file | -l language] "
-    log
-    log " -l language  the name of the language to find a server for."
-    log " -f file      the name of the file to find a server for."
-    log " -x           require a server to exist"
-    log " -c           check the version with '--version'."
-    log " -h           display this help message."
-    exit 1
-  }
-
-  local file=""
-  local language=""
-  local check=0
-  local strict=0
-  while getopts "xhcf:l:" opt; do
-    case "$opt" in
-    h) usage ;;
-    f) file="$OPTARG" ;;
-    l) language="$OPTARG" ;;
-    x) strict=1 ;;
-    c) check=1 ;;
-    \?)
-      echo "Invalid option: -$OPTARG"
-      usage
-      ;;
-    esac
-  done
-
-  shift $((OPTIND - 1))
-  OPTIND=0
-
-  if [ -n "${file:-}" ]; then
-    if git check-attr "format" -- "$file" 2>/dev/null | grep -q 'unset'; then
-      debug "file ${file} ignored"
-      return 3
-    fi
-  fi
-
-  if [ -z "${language:-}" ]; then
-    if [ -z "${file:-}" ]; then
-      log "Error: expected either -f file or -l language"
-      usage
-    fi
-    language=$(cmd-language "$file")
-  fi
-
-  mapfile -d '' servers < <(cmd-config -cer -l "$language" '.servers[]?')
-
-  if [ ${#servers[@]} -eq 0 ]; then
-    if ! ((strict)); then
-      debug "found no debugger for ${language}"
-      return 2
-    fi
-    log "Error: no server for $language"
-
-    if [ -n "$file" ]; then
-      log "Or ignore in .gitattributes by adding a line:"
-      log
-      log "  $file -format"
-      log
-    fi
-    return 1
-  fi
-
-  for fname in "${servers[@]}"; do
-    if [ "$fname" == "skip" ]; then
-      return 3
-    fi
-
-    mapfile -d '' server < <(cmd-config -rcS "$fname" '
-      (if .path then .path + "/" + .command else .command end), 
-      .args[]?')
-
-    if [ "${server[0]}" == "null" ]; then
-      debug "Found null server for $language, ignoring it"
-      return 2
-    fi
-
-    local EXE=$(which "${server[0]}" || true)
-    if [ -z "${EXE:-}" ]; then
-      log "Error: server not on path: ${server[0]}"
-      return 1
-    fi
-
-    server[0]="${EXE}"
-
-    debug "Found server:"
-    debug "  ${server[@]}"
-
-    if ((check)); then
-      debug "with version: $(${server[0]} --version)"
-    fi
-
-    printf '%q ' "${server[@]}"
-  done
-}
 
 doc_fmt_io="run the formatter in IO mode"
 function cmd-fmt-io() {

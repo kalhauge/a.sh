@@ -89,6 +89,23 @@ let
       name = name;
       config_file = ./servers/${name}.nix;
     };
+
+  languageOpts = {
+    options = {
+      enable = mkEnableOption "the language";
+      formatters = mkOption {
+        type = types.listOf (types.enum (builtins.attrNames options.formatters ++ [ "skip" ]));
+        default = [ ];
+      };
+      servers = mkOption {
+        type = types.listOf (types.enum (builtins.attrNames options.servers ++ [ "skip" ]));
+        default = [ ];
+      };
+    };
+    config = {
+      enable = mkIf config.enableAllLanguages true;
+    };
+  };
 in
 {
 
@@ -99,24 +116,7 @@ in
     enableAllLanguages = mkEnableOption "enables all languages";
 
     languages = mkOption {
-      type = types.attrsOf (
-        types.submodule {
-          options = {
-            enable = mkEnableOption "the language";
-            formatters = mkOption {
-              type = types.listOf (types.enum (builtins.attrNames options.formatters ++ [ "skip" ]));
-              default = [ ];
-            };
-            servers = mkOption {
-              type = types.listOf (types.enum (builtins.attrNames options.servers ++ [ "skip" ]));
-              default = [ ];
-            };
-          };
-          config = {
-            enable = mkIf config.enableAllLanguages true;
-          };
-        }
-      );
+      type = types.attrsOf (types.submodule languageOpts);
       default = { };
       description = "An attrset of languages";
     };

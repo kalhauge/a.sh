@@ -3,8 +3,6 @@
   lib,
   makeWrapper,
 
-  ash-config,
-
   # dependencies
   jq,
   enry,
@@ -36,7 +34,6 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     mkdir -p "$out/bin" "$out/share"
 
     cp -r share/linguist.tsv "$out/share/"
-    ln -s "${ash-config}" "$out/share/ash.json"
 
     echo "Hello!"
 
