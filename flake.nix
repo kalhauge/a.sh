@@ -36,65 +36,27 @@
           lib = import ./nix/lib.nix { inherit lib; };
         };
 
-        # debug = true;
-
         systems = [
           "x86_64-linux"
           "aarch64-linux"
           "aarch64-darwin"
-          "x86_64-darwin"
         ];
 
-        perSystem =
-          {
-            config,
-            pkgs,
-            self',
-            system,
-            ...
-          }:
-          {
-            ash = {
-              enable = true;
-              configuration = {
-                languages = {
-                  nix.enable = true;
-                  git.enable = true;
-                  markdown.enable = true;
-                  bash.enable = true;
-                };
-                #   emitPaths = true;
-                #   usedLanguages = [
-                #     "Git Attributes"
-                #     "Nix"
-                #     "Shell"
-                #     "Ignore List"
-                #     "JSON"
-                #     "Markdown"
-                #     "TSV"
-                #   ];
-
+        perSystem = { config, pkgs, ... }: {
+          packages.default = config.packages.ash;
+          packages.ash = pkgs.callPackage ./nix/ash { };
+          ash = {
+            enable = true;
+            configuration = {
+              languages = {
+                nix.enable = true;
+                git.enable = true;
+                markdown.enable = true;
+                bash.enable = true;
               };
             };
-
-            packages = {
-              # default = self'.packages.ash;
-
-              # ash = self.lib.mkAshShell pkgs {
-              #   enableAllLanguages = true;
-              # };
-
-              # ash-full = self.lib.mkAshShell pkgs {
-              #   emitPaths = true;
-              #   enableAllLanguages = true;
-              # };
-            };
-
-            # checks = {
-            #   ash = self'.packages.ash;
-            #   ash-full = self'.packages.ash-full;
-            # };
           };
+        };
       }
     );
 }

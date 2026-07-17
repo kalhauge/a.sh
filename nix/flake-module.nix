@@ -67,13 +67,8 @@ in
           ];
         };
 
-        packages.default = config.packages.ash;
-        packages.ash = pkgs.callPackage ./ash { };
-
         formatter = pkgs.writeShellScriptBin "format.sh" ''
           FILE="$PRJ_ROOT/.config/ash.json"
-
-          set -x
 
           if ! grep -qxF ".config/ash.json" "$PRJ_ROOT/.gitignore"; then
             echo ".config/ash.json" >> "$PRJ_ROOT/.gitignore" 

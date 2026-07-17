@@ -27,16 +27,13 @@
           {
             ash = {
               enable = true;
-              config = {
-                emitPaths = true;
-                usedLanguages = [
-                  "Git Attributes"
-                  "Nix"
-                  "Ignore List"
-                  "JSON"
-                  "Markdown"
-                ];
-
+              configuration = {
+                languages = {
+                  git.enable = true;
+                  markdown.enable = true;
+                  nix.enable = true;
+                  # Add more languages here
+                };
               };
             };
 
