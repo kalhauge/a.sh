@@ -7,5 +7,6 @@
     ./zig.nix
     ./c.nix
     ./python.nix
+    ./lua.nix
   ];
 }
