@@ -57,6 +57,12 @@
             ash = {
               enable = true;
               configuration = {
+                languages = {
+                  nix.enable = true;
+                  git.enable = true;
+                  markdown.enable = true;
+                  bash.enable = true;
+                };
                 #   emitPaths = true;
                 #   usedLanguages = [
                 #     "Git Attributes"

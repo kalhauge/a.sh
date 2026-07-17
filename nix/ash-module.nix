@@ -5,24 +5,53 @@
   ...
 }:
 let
+
   inherit (lib) types mkOption mkEnableOption;
+
+  formatterModule =
+    {
+      pkgs,
+      config,
+      name,
+      ...
+    }:
+    {
+      options = {
+        args = mkOption {
+          type = types.listOf types.str;
+          default = [ ];
+        };
+        program = mkOption {
+          type = types.path;
+          default = lib.getExe config.package;
+          defaultText = "lib.getExe config.package";
+        };
+        package = mkOption {
+          type = types.package;
+        };
+        command = mkOption {
+          type = types.listOf types.str;
+          default = if config.skip then [ ] else [ (builtins.toString config.program) ] ++ config.args;
+          defaultText = "[config.program] ++ config.args";
+        };
+        skip = mkOption {
+          type = types.bool;
+          default = false;
+        };
+      };
+    };
+
 in
 {
+  imports = [
+    ./languages/default.nix
+  ];
+
   options = {
+
     formatters = mkOption {
       default = { };
-      type = types.attrsOf (
-        types.submodule {
-          options = {
-            args = mkOption {
-              type = types.listOf types.str;
-            };
-            program = mkOption {
-              type = types.str;
-            };
-          };
-        }
-      );
+      type = types.attrsOf (types.submodule formatterModule);
     };
 
     output = {
@@ -37,23 +66,11 @@ in
   };
 
   config = {
-    formatters = {
-      "C" = {
-        args = [ "-" ];
-        program = "${pkgs.clang-tools}/bin/clang-format";
-      };
-      "Nix" = {
-        args = [ "-" ];
-        program = "${pkgs.nixfmt}/bin/nixfmt";
-      };
-    };
-
     output = {
       configuration = {
-        inherit (config) formatters;
+        formatters = lib.mapAttrs (k: v: v.command) config.formatters;
       };
       json = pkgs.writeText "ash.json" (builtins.toJSON config.output.configuration);
     };
-
   };
 }

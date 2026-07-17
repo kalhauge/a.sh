@@ -278,7 +278,12 @@ function cmd-fmt-find() {
     language=$(cmd-language "$file")
   fi
 
-  mapfile -d '' formatter < <(cmd-config -rcF "$language" '(.program, .args[]?)')
+  mapfile -d '' formatter < <(cmd-config -rcF "$language" '(if . then .[] else (null,[]) end)')
+
+  if [[ ${#formatter[@]} == 0 ]]; then
+    debug "formatter ${file} ignored"
+    return 3
+  fi
 
   if [ "${formatter[0]}" == "null" ]; then
     debug "Found null formatter for $language, ignoring it"
@@ -294,7 +299,6 @@ function cmd-fmt-find() {
 
   printf '%q ' "${formatter[@]}"
 }
-
 
 doc_fmt_io="run the formatter in IO mode"
 function cmd-fmt-io() {
@@ -351,7 +355,6 @@ function cmd-fmt() {
     log
     log "  -w      override the file"
     log "  -c      check the file for formatting (default)"
-    log "  -D      check and file for formatting and print diff"
     log
     exit 1
   }
@@ -363,10 +366,6 @@ function cmd-fmt() {
     h) usage ;;
     c) mode=check ;;
     w) mode=write ;;
-    D)
-      mode=check
-      print_diff=1
-      ;;
     \?)
       echo "Invalid option: -$OPTARG"
       usage
@@ -378,11 +377,20 @@ function cmd-fmt() {
   OPTIND=0
 
   local ARGS=("$@")
-  if [ ${#ARGS[@]} -eq 0 ]; then
+  if [[ ${#ARGS[@]} -eq 0 ]]; then
     mapfile -t ARGS
   fi
 
-  local changes=()
+  local fmt_folder=".cache/ash/fmt"
+  echo "**/*" >".cache/ash/.gitignore"
+  mkdir -p "$fmt_folder"
+
+  local fmt_file=$(mktemp -p "$fmt_folder")
+  local fmt_patch=".cache/ash/patch"
+
+  echo "" >"$fmt_file"
+  rm -f "$fmt_patch"
+
   for file in "${ARGS[@]}"; do
 
     local result=0
@@ -402,7 +410,7 @@ function cmd-fmt() {
     fi
 
     local formatter=($formatter)
-    local fmt_file=$(mktemp)
+
     debug "writing to ${fmt_file}"
     local result=0
     "${formatter[@]}" <"$file" >"${fmt_file}" || result=$?
@@ -415,39 +423,28 @@ function cmd-fmt() {
 
     if 1>/dev/null diff -q ${file} ${fmt_file}; then
       1>&2 printf '%30s\n' "unchanged"
-      rm -rf "${fmt_file}"
       continue
     fi
 
     1>&2 printf '%30s\n' "changed"
-    changes+=("$(printf '%q ' "${fmt_file}" "${file}")")
 
+    diff -u "$file" --label "$file" --label "$file" "$fmt_file" >>"$fmt_patch" || true
   done
 
-  log "found ${#changes[@]} changes"
+  rm -rf "${fmt_file}"
 
-  if [ "${#changes[@]}" -eq 0 ]; then
+  if [[ ! -e $fmt_patch ]]; then
+    log "no changes"
     return 0
-  fi
-
-  if ((print_diff)); then
-    for c in "${changes[@]}"; do
-      diff --color=always $c || true
-    done
   fi
 
   case "$mode" in
   check)
-    log "accept using:"
-    for c in "${changes[@]}"; do
-      log "mv $c"
-    done
+    log "accept using: patch -p0 < $fmt_patch"
     return 1
     ;;
   write)
-    for c in "${changes[@]}"; do
-      mv $c
-    done
+    patch -p0 <"$fmt_patch"
     ;;
   esac
 }

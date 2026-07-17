@@ -11,7 +11,7 @@
 }:
 stdenvNoCC.mkDerivation (finalAttrs: {
   name = "ash";
-  src = lib.cleanSource ../.;
+  src = lib.cleanSource ../../.;
 
   nativeBuildInputs = [
     makeWrapper
