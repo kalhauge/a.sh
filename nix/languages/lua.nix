@@ -23,11 +23,11 @@ in
   config.formatters."Lua" = lib.mkIf cfg.enable {
     package = pkgs.stylua;
     args = lib.flatten [
-      (lib.optionals (cfg.indent != 0) [
+      (lib.optionals (cfg.style.indent != 0) [
         "--indent-type"
         "Spaces"
         "--indent-width"
-        (builtins.toString cfg.indent)
+        (builtins.toString cfg.style.indent)
       ])
       "-"
     ];

@@ -382,8 +382,8 @@ function cmd-fmt() {
   fi
 
   local fmt_folder=".cache/ash/fmt"
-  echo "**/*" >".cache/ash/.gitignore"
   mkdir -p "$fmt_folder"
+  echo "**/*" >".cache/ash/.gitignore"
 
   local fmt_file=$(mktemp -p "$fmt_folder")
   local fmt_patch=".cache/ash/patch"
