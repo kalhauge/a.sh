@@ -34,12 +34,8 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     mkdir -p "$out/bin" "$out/share"
 
     cp -r share/linguist.tsv "$out/share/"
-
-    echo "Hello!"
-
     cp "bin/a.sh" "$out/bin/a.sh.unwrapped"
 
-    echo "ehllo"
     patchShebangs --host "$out/bin/a.sh.unwrapped"
 
     makeWrapper "$out/bin/a.sh.unwrapped" "$out/bin/a.sh" \

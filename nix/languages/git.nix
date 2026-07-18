@@ -14,6 +14,7 @@
     formatters = lib.mkIf config.languages.git.enable {
       "Git Attributes".skip = true;
       "Ignore List".skip = true;
+      "Git Commit".skip = true;
     };
   };
 }

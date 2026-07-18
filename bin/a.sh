@@ -297,6 +297,9 @@ function cmd-fmt-find() {
     debug "with version: $(${formatter[0]} --version)"
   fi
 
+  printf 'env '
+  printf 'ASH_FILE=%q ' "$file"
+  printf 'ASH_LANG=%q ' "$language"
   printf '%q ' "${formatter[@]}"
 }
 
@@ -331,7 +334,7 @@ function cmd-fmt-io() {
     usage
   fi
 
-  $(cmd-fmt-find -x "${opts[@]}")
+  exec $(cmd-fmt-find -x "${opts[@]}")
 
 }
 
