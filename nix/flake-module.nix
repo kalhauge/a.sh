@@ -61,7 +61,7 @@ in
 
       config = lib.mkIf config.ash.enable {
         ashConfiguration = localFlake.lib.mkAshConfiguration {
-          inherit pkgs;
+          inherit pkgs system;
           modules = [
             config.ash.configuration
           ];

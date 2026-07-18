@@ -2,10 +2,14 @@
 let
   ash-lib = {
     mkAshConfiguration =
-      config@{ pkgs, modules }:
+      config@{
+        pkgs,
+        modules,
+        system,
+      }:
       (lib.evalModules {
         modules = [
-          { config._module.args = { inherit pkgs ash-lib; }; }
+          { config._module.args = { inherit pkgs system ash-lib; }; }
           ./ash-module.nix
         ]
         ++ modules;
