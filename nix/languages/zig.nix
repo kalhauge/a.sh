@@ -19,7 +19,7 @@ in
     enable = mkEnableOption "Zig";
 
     package = mkOption {
-      type = types.packages;
+      type = types.package;
       default = pkgs.zig;
       defaultText = "pkgs.zig";
     };
