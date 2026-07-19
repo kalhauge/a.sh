@@ -34,5 +34,13 @@ in
       ];
       package = cfg.package;
     };
+    formatters."Zon" = {
+      args = [
+        "fmt"
+        "--stdin"
+        "--zon"
+      ];
+      package = cfg.package;
+    };
   };
 }
