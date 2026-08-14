@@ -36,7 +36,7 @@ in
       args = [
         "-s"
       ]
-      ++ lib.optional cfg.format-tables [ "--format-tables" ]
+      ++ lib.optional cfg.format-tables "--format-tables"
       ++ (
         if cfg.wrap == 0 then
           [ "--nowrap" ]
