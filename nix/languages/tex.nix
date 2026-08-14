@@ -23,6 +23,12 @@ in
       type = types.int;
       default = 0;
     };
+
+    format-tables = mkOption {
+      description = "format tables";
+      type = types.bool;
+      default = true;
+    };
   };
 
   config = mkIf cfg.enable {
@@ -30,6 +36,7 @@ in
       args = [
         "-s"
       ]
+      ++ lib.optional cfg.format-tables [ "--format-tables" ]
       ++ (
         if cfg.wrap == 0 then
           [ "--nowrap" ]
