@@ -26,7 +26,7 @@ in
   };
 
   config = mkIf cfg.enable {
-    formatters."Tex" = {
+    formatters."TeX" = {
       args = [
         "-s"
       ]
