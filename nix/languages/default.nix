@@ -7,6 +7,7 @@
     ./zig.nix
     ./c.nix
     ./yaml.nix
+    ./tex.nix
     ./json.nix
     ./java.nix
     ./python.nix
