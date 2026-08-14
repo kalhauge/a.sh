@@ -15,7 +15,7 @@ let
   cfg = config.languages.tex;
 in
 {
-  options.languages.c = {
+  options.languages.tex = {
     enable = mkEnableOption "LaTeX+";
 
     wrap = mkOption {
