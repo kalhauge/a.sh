@@ -36,10 +36,10 @@ in
         description = "support GitHub Flavored Markdown";
       };
 
-      beatify.bash = lib.mkOption {
+      beautify.bash = lib.mkOption {
         type = lib.types.bool;
-        default = true;
-        description = "format bash in code-blocks";
+        default = false;
+        description = "format bash in code-blocks (depricated)";
       };
     };
   };
@@ -52,7 +52,7 @@ in
           (lib.optional cfg.style.wikilink ps.mdformat-wikilink)
           (lib.optional cfg.style.frontmatter ps.mdformat-frontmatter)
           (lib.optional cfg.style.gfm ps.mdformat-gfm)
-          (lib.optional cfg.style.beatify.bash ps.mdformat-beautysh)
+          (lib.optional cfg.style.beautify.bash ps.mdformat-beautysh)
         ]
       ))
     );
