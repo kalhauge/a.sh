@@ -29,6 +29,18 @@ in
         default = true;
         description = "support frontmatter";
       };
+
+      gfm = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "support GitHub Flavored Markdown";
+      };
+
+      beatify.bash = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "format bash in code-blocks";
+      };
     };
   };
 
@@ -39,6 +51,8 @@ in
         lib.flatten [
           (lib.optional cfg.style.wikilink ps.mdformat-wikilink)
           (lib.optional cfg.style.frontmatter ps.mdformat-frontmatter)
+          (lib.optional cfg.style.gfm ps.mdformat-gfm)
+          (lib.optional cfg.style.beatify.bash ps.mdformat-beautysh)
         ]
       ))
     );
