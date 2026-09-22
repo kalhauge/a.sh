@@ -13,5 +13,6 @@
     ./python.nix
     ./lua.nix
     ./haskell.nix
+    ./rust.nix
   ];
 }
