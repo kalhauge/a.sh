@@ -5,7 +5,7 @@
   ...
 }:
 let
-  cfg = config.languages.haskell;
+  cfg = config.languages.rust;
 in
 {
   options.languages.rust = {
